@@ -18,7 +18,7 @@ export default function TrainingList() {
   const addTraining = (training) => {
     console.log("painike");
     
-    fetch("https://traineeapp.azurewebsites.net/api/trainings", {
+    fetch("https://traineeapp.azurewebsites.net/gettrainings", {
     method: 'POST',
     headers: {'Content-type': 'application/json'},
     body: JSON.stringify(training)
@@ -27,6 +27,9 @@ export default function TrainingList() {
     .then(response => {
       if(response.ok) {
         fetchTrainings();
+      }
+      else {
+        alert("Something went wrong :'( ");
       }
     })
   };
@@ -114,8 +117,9 @@ if(window.confirm('Are you sure?')) {
       sortable: true,
       filter: true,
       floatingFilter: true,
-      suppressMenu: true,
+      suppressMenu: true, 
       valueGetter: (params) => `${params.data.customer.firstname} ${params.data.customer.lastname}`,
+      
     },
     {
       headerName: "",
@@ -145,7 +149,7 @@ if(window.confirm('Are you sure?')) {
   return (
     <div>
       <Stack spacing={2} direction="row">
-        <AddTraining addTraining={addTraining} />
+        <AddTraining addTraining={addTraining} trainings={trainings} fetchTrainings={fetchTrainings}/>
         
       </Stack>
       
