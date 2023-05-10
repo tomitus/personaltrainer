@@ -2,58 +2,67 @@ import React, { useState } from "react";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
-import OutlinedInput from '@mui/material/OutlinedInput';
-import InputLabel from '@mui/material/InputLabel';
-import { useTheme } from '@mui/material/styles';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import Select from '@mui/material/Select';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment'
+import OutlinedInput from "@mui/material/OutlinedInput";
+import InputLabel from "@mui/material/InputLabel";
+import { useTheme } from "@mui/material/styles";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
+import Select from "@mui/material/Select";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterMoment } from "@mui/x-date-pickers/AdapterMoment";
 import { DialogTitle, DialogContent, TextField } from "@mui/material";
 
-function getStyles(name, firstname, theme) {
-    return {
-      fontWeight:
-      firstname.indexOf(name) === -1
-          ? theme.typography.fontWeightRegular
-          : theme.typography.fontWeightMedium,
-    };
-  }
-
-export default function AddTraining({ addTraining, trainings, fetchTrainings }) {
-    const theme = useTheme();
+export default function AddTraining({ addTraining }) {
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomerName, setSelectedCustomerName] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [open, setOpen] = useState(false);
   const [training, setTraining] = useState({
-    id: "",
     date: "",
-      duration: "",
-      activity: "",
-      customer: "",
+    duration: "",
+    activity: "",
+    customer: "",
   });
 
-  const ITEM_HEIGHT = 48;
-  const ITEM_PADDING_TOP = 8;
-  const MenuProps = {
-    PaperProps: {
-      style: {
-        maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP,
-        width: 250,
-      },
-    },
+  const fetchCustomers = () => {
+    fetch("https://traineeapp.azurewebsites.net/api/customers")
+      .then((response) => response.json())
+      .then((responseData) => setCustomers(responseData.content))
+      .catch((err) => console.error(err));
   };
+
+  React.useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   const handleClickOpen = () => {
     setOpen(true);
+    
   };
 
   const handleAdd = () => {
     setOpen(false);
-    addTraining(training);
-    fetchTrainings();
+    if (!selectedCustomer) {
+      alert("Please select a customer.");
+      console.log("training", training);
+      console.log("selectedCustomer", selectedCustomer);
+      
+      return;
+    }
+    if (!training.date) {
+      alert("Please select a date.");
+      console.log("training", training);
+      console.log("selectedCustomer", selectedCustomer);
+      
+      return;
+    }
     setTraining({
       ...training,
-      
+      customer: selectedCustomer 
+    });
+    addTraining(training);
+    setTraining({
+      ...training,
       date: "",
       duration: "",
       activity: "",
@@ -62,19 +71,18 @@ export default function AddTraining({ addTraining, trainings, fetchTrainings }) 
   };
   const handleCancel = () => {
     setOpen(false);
+
     setTraining({
-        ...training,
-        id: "",
-        date: "",
-        duration: "",
-        activity: "",
-        customer: "",
-      });
+      ...training,
+      date: "",
+      duration: "",
+      activity: "",
+      customer: {},
+    });
   };
 
   const handleClose = () => {
     setOpen(false);
-    
   };
 
   const inputChanged = (event) => {
@@ -84,12 +92,24 @@ export default function AddTraining({ addTraining, trainings, fetchTrainings }) 
 
   const dateChanged = (date) => {
     console.log("date changed");
-    setTraining({ ...training, date});
+    setTraining({ ...training, date });
   };
 
+  React.useEffect(() => {
+    console.log("Training state has been updated:", training);
+  }, [training]);
+
   const nameChanged = (event) => {
-    console.log("name changed");
-    setTraining({ ...training, [event.target.name]: event.target.value });
+    const selectedName = event.target.value;
+    setSelectedCustomerName(selectedName);
+
+    const selectedCustomer = customers.find((customer) => {
+      return `${customer.firstname} ${customer.lastname}` === selectedName;
+    });
+    setSelectedCustomer(selectedCustomer);
+    console.log("2", selectedCustomer)
+    setTraining({ ...training, customer: selectedCustomer.links[1].href });
+
   };
 
   return (
@@ -101,16 +121,16 @@ export default function AddTraining({ addTraining, trainings, fetchTrainings }) 
         <DialogContent>
           <DialogTitle>Add Training</DialogTitle>
           <LocalizationProvider dateAdapter={AdapterMoment}>
-          <DatePicker
-            autoFocus={true}
-            value={training.date}
-            onChange={dateChanged}
-            margin="dense"
-            label="Date"
-            name="date"
-            fullWidth={true}
-            variant="standard"
-          />
+            <DatePicker
+              autoFocus={true}
+              value={training.date}
+              onChange={dateChanged}
+              margin="dense"
+              label="Date"
+              name="date"
+              fullWidth={true}
+              variant="standard"
+            />
           </LocalizationProvider>
           <TextField
             autoFocus={true}
@@ -133,27 +153,25 @@ export default function AddTraining({ addTraining, trainings, fetchTrainings }) 
             variant="standard"
           />
           <FormControl sx={{ m: 1, width: 300 }}>
-        <InputLabel id="Customers">Customers</InputLabel>
-        <Select
-          labelId="demo-multiple-name-label"
-          id="customer"
-          
-          value={`${training.customer.firstname} ${training.customer.lastname}`}
-          onChange={nameChanged}
-          input={<OutlinedInput label="Customer" />}
-          MenuProps={MenuProps}
-        >
-            console.log(customer.firstname);
-            {trainings && trainings.length > 0 && trainings.map((customer) => (
-            <MenuItem
-              key={training.customer}
-              value={`${customer.firstname} ${customer.lastname}`}
+            <InputLabel id="customer">Customers</InputLabel>
+            <Select
+              labelId="select-names"
+              id="customer"
+              value={selectedCustomerName}
+              onChange={nameChanged}
+              autoWidth
+              label="Customer"
             >
-              {customer.firstname} {customer.lastname}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+              {customers.map((customer, index) => (
+                <MenuItem
+                  key={index}
+                  value={`${customer.firstname} ${customer.lastname}`}
+                >
+                  {customer.firstname} {customer.lastname}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
